@@ -1,0 +1,64 @@
+
+name: VECTORA Windows Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vect​ora-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-build:
+    name: Build VECTORA for Windows x64
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Show Rust versions
+        run: |
+          rustc --version
+          cargo --version
+
+      - name: Build VECTORA Desktop
+        run: |
+          cargo build --release --locked --manifest-path apps/vectorcraft/Cargo.toml --bin vectorcraft
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          $exe = "target/release/vectorcraft.exe"
+          if (!(Test-Path $exe)) {
+            Write-Error "VECTORA executable was not found: $exe"
+            exit 1
+          }
+          Write-Host "VECTORA executable successfully created."
+
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: VECTORA-Windows-x64
+          path: target/release/vectorcraft.exe
+          if-no-files-found: error
+          retention-days: 30
